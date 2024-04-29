@@ -11,7 +11,7 @@ export const POST = async (request: Request) => {
 
   if (
     !isIngredient(ingredient) ||
-    !isDiateryPreference(dietaryPreference) ||
+    (!!dietaryPreference && !isDiateryPreference(dietaryPreference)) ||
     isNullOrUndefined(servingCount) ||
     servingCount < 1
   ) {
@@ -23,22 +23,28 @@ export const POST = async (request: Request) => {
   }
 
   try {
-    const content = `generate a recipe for me that uses the following ingredient:
-    "${ingredient}"
-    The recipe must also take into consideration the following dietary restriction:
-    "${dietaryPreference}"
-  
-    Your recipe must allow for a exactly ${servingCount} servings, be sure to list the serving size as well as amount per serving in your recipe.
-
-    ${
+    const content = `Generate a new recipe ${
       lastRecipe
-        ? `Your previous recipe was: ${lastRecipe}\n\nMake me a new recipe given the provided servings, dietary preference, and ingredient. For example if you previously generated pancakes suggest a new dish that is not pancakes.`
+        ? "different than the recipe listed below the title LAST_RECIPE."
+        : "."
+    } The recipe must include the following ingredient:
+    "${ingredient}"
+    ${
+      dietaryPreference
+        ? `The recipe must also take into consideration the following dietary restriction:
+    "${dietaryPreference}"`
         : ""
     }
+  
+    Your recipe must allow for a exactly ${servingCount} servings, be sure to list the serving size as well as amount per serving in your recipe.
     
     Your recipe must be formatted in HTML tags for readability. Use standard tailwind css styles for spacing, positioning, and font size/weight styling. Do not include any images in your HTML or color styling. The title of your recipe should be 2xl in size. If provided a previous recipe, use the same styles on the new recipe.
     
-    Wrap your recipe output in the XML tags <output></output>`;
+    Wrap your recipe output in the XML tags <output></output>
+    
+    ${lastRecipe ? `LAST_RECIPE: ${lastRecipe}` : ""}
+    
+    `;
     const response = await model.chat.completions.create({
       messages: [{ role: "user", content }],
       model: "gpt-3.5-turbo",

@@ -59,13 +59,14 @@ type Actions =
       Action.SUBMIT,
       {
         ingredient: Ingredient;
-        dietaryPreference: DietaryPreference;
+        dietaryPreference: DietaryPreference | null;
         servingCount: number;
       }
     >
   | ActionType<Action.SET_RECIPE, string>;
 
 export default function Home() {
+  const numberInputRef = React.useRef<HTMLInputElement>(null);
   const [state, dispatch] = useImmerReducer<State, Actions>((draft, action) => {
     switch (action.type) {
       case Action.SET_VALUE:
@@ -94,11 +95,11 @@ export default function Home() {
   }, initialState);
 
   const validateFormValues = (): string[] => {
-    const INPUT_KEYS = ["ingredient", "dietaryPreference", "servingCount"];
+    const INPUT_KEYS = ["ingredient", "servingCount"];
     const INVALID_KEYS: string[] = [];
     Object.entries(state).forEach(([key, value]) => {
       if (!INPUT_KEYS.includes(key)) return;
-      if (value === null || value === 0) {
+      if (!value || value === 0) {
         INVALID_KEYS.push(key);
         return;
       }
@@ -112,13 +113,17 @@ export default function Home() {
 
   const fetchRecipe = async (recipeArgs: {
     ingredient: Ingredient;
-    dietaryPreference: DietaryPreference;
+    dietaryPreference: DietaryPreference | null;
     servingCount: number;
     lastRecipe?: string;
   }): Promise<void> => {
     dispatch({
       type: Action.SUBMIT,
-      payload: recipeArgs,
+      payload: {
+        ingredient: recipeArgs.ingredient,
+        servingCount: recipeArgs.servingCount,
+        dietaryPreference: recipeArgs.dietaryPreference ?? null,
+      },
     });
     try {
       const res = await fetch("/api/recipe", {
@@ -139,13 +144,7 @@ export default function Home() {
     console.log("generate recipe");
     const { servingCount, dietaryPreference, ingredient, recipe = "" } = state;
     const INVALID_KEYS = validateFormValues();
-    if (
-      INVALID_KEYS.length > 0 ||
-      !ingredient ||
-      !dietaryPreference ||
-      !servingCount
-    )
-      return;
+    if (INVALID_KEYS.length > 0 || !ingredient || !servingCount) return;
     const recipeArgs = {
       ingredient,
       dietaryPreference,
@@ -157,11 +156,12 @@ export default function Home() {
   const handleRegenerateRecipe = async (): Promise<void> => {
     const { servingCount, dietaryPreference, ingredient } =
       state.lasRecipeInputs ?? {};
-    if (!ingredient || !servingCount || !dietaryPreference) return;
+    if (!ingredient || !servingCount) return;
     return fetchRecipe({
       ingredient,
-      dietaryPreference,
+      dietaryPreference: dietaryPreference ?? null,
       servingCount,
+      lastRecipe: state.recipe,
     });
   };
   return (
@@ -174,11 +174,21 @@ export default function Home() {
             className={STYLES.INPUT_STYLES}
             name="ingredient"
             onChange={(e) => {
-              if (!isIngredient(e.target.value)) return;
+              const nextValue = e.target.value;
+              if (!nextValue) {
+                dispatch({
+                  type: Action.SET_VALUE,
+                  payload: {
+                    ingredient: null,
+                  },
+                });
+                return;
+              }
+              if (!isIngredient(nextValue)) return;
               dispatch({
                 type: Action.SET_VALUE,
                 payload: {
-                  ingredient: e.target.value,
+                  ingredient: nextValue ?? null,
                 },
               });
             }}
@@ -199,11 +209,21 @@ export default function Home() {
           <select
             className={STYLES.INPUT_STYLES}
             onChange={(e) => {
+              const nextValue = e.target.value;
+              if (!nextValue) {
+                dispatch({
+                  type: Action.SET_VALUE,
+                  payload: {
+                    dietaryPreference: null,
+                  },
+                });
+                return;
+              }
               if (!isDiateryPreference(e.target.value)) return;
               dispatch({
                 type: Action.SET_VALUE,
                 payload: {
-                  dietaryPreference: e.target.value,
+                  dietaryPreference: e.target.value ?? null,
                 },
               });
             }}
@@ -215,24 +235,39 @@ export default function Home() {
               </option>
             ))}
           </select>
-          {state.validationError.includes("dietaryPreference") ? (
-            <span className={STYLES.ERROR_TEXT}>required</span>
-          ) : null}
         </div>
         <div className="flex flex-col">
           <span>Serving Count</span>
           <input
             type="number"
+            ref={numberInputRef}
             className={STYLES.INPUT_STYLES}
             onChange={(e) => {
-              if (isNaN(Number(e.target.value))) return;
+              if (e.target.value === "") {
+                dispatch({
+                  type: Action.SET_VALUE,
+                  payload: {
+                    servingCount: null,
+                  },
+                });
+                return;
+              }
+              let nextNumber: number | null = Number(e.target.value);
+              console.log(
+                "NUMBER",
+                e.target.value,
+                typeof e.target.value,
+                e.target.value.length
+              );
+              nextNumber = isNaN(nextNumber) ? null : nextNumber;
               dispatch({
                 type: Action.SET_VALUE,
                 payload: {
-                  servingCount: Number(e.target.value),
+                  servingCount: nextNumber,
                 },
               });
             }}
+            defaultValue={undefined}
             value={state.servingCount ?? ""}
           />
           {state.validationError.includes("servingCount") ? (
@@ -259,18 +294,36 @@ export default function Home() {
         ) : null}
         {state.recipe ? (
           <div className="flex flex-col mt-8 w-full">
-            <div className="flex flex-row w-full justify-between">
+            <div className="flex flex-row w-full justify-between mb-8">
               <h1 className="text-4xl my-2">Recipe</h1>
-              <button
-                className={
-                  STYLES.BUTTON_STYLES +
-                  ` ${state.isLoading ? STYLES.DISABLED : ""}`
-                }
-                onClick={handleRegenerateRecipe}
-                disabled={state.isLoading}
-              >
-                Generate Again
-              </button>
+              <div className="flex flex-col items-center">
+                <button
+                  className={
+                    STYLES.BUTTON_STYLES +
+                    ` ${state.isLoading ? STYLES.DISABLED : ""}`
+                  }
+                  onClick={handleRegenerateRecipe}
+                  disabled={state.isLoading}
+                >
+                  Generate Again
+                </button>
+                <div className="flex flex-row text-sm mt-1">
+                  <span className="mr-2">
+                    <strong>Ingredient: </strong>
+                    {state.lasRecipeInputs?.ingredient}
+                  </span>
+                  {state.lasRecipeInputs?.dietaryPreference ? (
+                    <span className="mr-2">
+                      <strong>Diet: </strong>
+                      {state.lasRecipeInputs?.dietaryPreference}
+                    </span>
+                  ) : null}
+                  <span>
+                    <strong>Serving: </strong>
+                    {state.lasRecipeInputs?.servingCount}
+                  </span>
+                </div>
+              </div>
             </div>
             <div dangerouslySetInnerHTML={{ __html: state.recipe }} />
           </div>

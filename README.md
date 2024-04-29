@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Justin Rich's AI-Powered Recipe Generator
 
-## Getting Started
+This web application generates unique recipes based on user-selected ingredients and dietary preferences. By leveraging OpenAI's powerful language model, the app creates personalized and creative recipe instructions tailored to the user's input.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Simple and intuitive user interface
+- Select ingredients from a predefined list or enter custom ingredients
+- Specify dietary preferences (vegetarian, gluten-free, low-carb)
+- Enter the desired number of servings
+- Generate unique recipes with a single click
+- "Generate New Recipe" button for requesting a new recipe without resubmitting the form
+- Error handling for API failures with appropriate error messages
+
+## Tech Stack
+
+- Next.js
+- React
+- Tailwind CSS
+- OpenAI API for recipe generation
+
+## Quick Start
+
+1. Clone the repository:
+   git clone https://github.com/yourusername/ai-powered-recipe-generator.git
+1. Install the dependencies:
+
+```
+yarn install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1. Set up the OpenAI API key:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Create a `.env.local` file in the project root
+- Add the following line to the `.env.local` file:
+  ```
+  OPENAI_API_KEY=your_api_key_here
+  ```
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+1. Start the development server:
+   `yarn dev`
+2. Open your browser and navigate to `http://localhost:3000` to access the AI-Powered Recipe Generator.
 
-## Learn More
+## Usage Instructions
 
-To learn more about Next.js, take a look at the following resources:
+- Select your ingredient, dietary restriction (optional), and serving size
+  - Note if you do not provide a ingredient or serving size you will be notified by the system to select a value. If you provide 0 for serving size you will also get a validation error.
+- Click "Generate Recipe"
+- Notice your recipe below
+- To get another options for your previous selections click "Generate Again" and you will get a new recipie suggestion
+  - NOTE: the "Generate Again" button will display your last submitted selections that will be used in generating a new recipe. You can change selections in the form above and your previous submission values will be cached for additional regeneration requests. Only when you submit newly selected values will the regeneration parameters change.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Assumptions
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+- Only one ingredient, dietary restriction, and serving size is accepted at a time
+- All input constraints must be respected at the same time (AND not OR logic)
+- We want recipe "regenerations" to have awareness of the last recipe provided
 
-## Deploy on Vercel
+## Limitations
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- AI is only aware of 1 previous recipe, we could instead feed it a list of all previous recipe titles to prevent duplication
+- Recipe's provided are not audited to see if ingredients match the ingredient, dietary restriction and serving size requested. I would recommend as an improvement making a second call to the LLM to check if these rules have been followed.
+- Styling for the recipe currently relies on the LLM to generate an HTML doc. This looks good enough for POC, but a fast follow would be to have the AI return a recipe in a structured format (i.e. JSON) and then conditionally render UI components based on data.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+## AI Tools Used
+
+This project was developed with the assistance of the following AI tools:
+
+- [OpenAI-Node](https://www.npmjs.com/package/openai)
